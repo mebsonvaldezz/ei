@@ -1,0 +1,99 @@
+TABLA:
+	_auth
+CAMPOS:
+	user_id - mediumint(5)
+	auth_access - smallint(1)
+	auth_insert - smallint(1)
+	auth_edit - smallint(1)
+	auth_null - smallint(1)
+	auth_delete - smallint(1)
+	auth_search - smallint(1)
+	auth_ranks - smallint(1)
+	auth_print - smallint(1)
+	auth_log - smallint(1)
+LLAVE PRIMARIA:
+	user_id
+	
+--------------------------------------------------------
+
+TABLA:
+	_config
+CAMPOS:
+	config_name - varchar(100)
+	config_value - varchar(100)
+LLAVE PRIMARIA:
+	config_name
+	
+--------------------------------------------------------
+
+TABLA:
+	_constancia
+CAMPOS:
+	c_exe - int(11)
+	c_null - tinyint(1)
+	c_date - int(11)
+	c_nit - varchar(20)
+	c_text - text
+
+--------------------------------------------------------
+
+TABLA:
+	_factura
+CAMPOS:
+	f_exe - int(11)
+	f_serie - varchar(20)
+	f_fact - varchar(20)
+	f_date - int(11)
+	f_total - double
+
+--------------------------------------------------------
+
+TABLA:
+	_log
+CAMPOS:
+	log_id - int(11)
+	log_user_id - mediumint(5)
+	log_date - int(11)
+	log_exe - int(11)
+	log_action - varchar(255)
+LLAVE PRIMARIA:
+	log_id
+
+--------------------------------------------------------
+
+TABLA:
+	_prov
+CAMPOS:
+	p_nit - varchar(20)
+	p_name - varchar(100)
+
+--------------------------------------------------------
+
+TABLA:
+	_sessions
+CAMPOS:
+	session_id - varchar(50)
+	session_user_id - mediumint(5)
+	session_last_visit - int(11)
+	session_start - int(11)
+	session_time - int(11)
+	session_ip - varchar(40)
+	session_page - varchar(100)
+
+--------------------------------------------------------
+
+TABLA:
+	_users
+CAMPOS:
+	user_id - mediumint(5)
+	user_adm - smallint(1)
+	username - varchar(20)
+	user_password - varchar(50)
+	user_email - varchar(100)
+	user_lastvisit - int(11)
+	user_rank_min - int(11)
+	user_rank_max - int(11)
+	user_return_insert - tinyint(1)
+	user_print_copies - tinyint(3)
+LLAVE PRIMARIA:
+	user_id
