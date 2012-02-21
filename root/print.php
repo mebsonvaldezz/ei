@@ -23,8 +23,7 @@ $_submenu = array(
 	2 => 'Revisi&oacute;n',
 	3 => 'Reporte de SAT'
 );
-if (!isset($_submenu[$screen]))
-{
+if (!isset($_submenu[$screen])) {
 	$screen = 1;
 }
 
@@ -39,9 +38,8 @@ if (!isset($print_auth[$screen]) || !$print_auth[$screen])
 
 $exc = $user->private_data();
 $private_groups = '';
-if (is_array($exc))
-{
-	$private_groups = ' AND user_id IN (' . implode(',', $exc) . ')';
+if (is_array($exc)) {
+	$private_groups = sql_filter(' AND user_id IN (??)', implode(',', $exc));
 }
 
 $sql = 'SELECT *
@@ -49,92 +47,76 @@ $sql = 'SELECT *
 	WHERE user_id <> 1
 		AND user_adm = 0' . $private_groups . '
 	ORDER BY username';
-$result = $db->sql_query($sql);
-
+$result = sql_rowset($sql);
+	
 $i = 0;
 $groups = array();
 $groups_legend = array();
-while ($row = $db->sql_fetchrow($result))
-{
+foreach ($result as $row) {
 	$i++;
 	$groups[$i] = array($row['user_id']);
 	$groups_legend[$i] = $row['username'];
 }
-$db->sql_freeresult($result);
 
-if (!is_array($exc))
-{
+if (!is_array($exc)) {
 	$groups[] = array(2, 3, 4, 5, 11, 12, 13, 14);
 	$groups[] = array(6, 7, 8);
 	$groups[] = array(9, 10, 15);
-	$groups_legend[] = 'UNIS';
-	$groups_legend[] = 'Tayasal';
-	$groups_legend[] = 'IFES';
+	$groups_legend[] = 'Grupo 1';
+	$groups_legend[] = 'Grupo 2';
+	$groups_legend[] = 'Grupo 3';
 }
 
 $sgroup = request_var('sgroup', 0);
 $tpcs = request_var('tpcs', 0);
 
-if ($submit)
-{
-	switch ($screen)
-	{
+if ($submit) {
+	switch ($screen) {
 		case 1:
 			$search = request_var('search', '');
 			
-			if (empty($search))
-			{
+			if (empty($search)) {
 				$error[] = 'Debe ingresar al menos un valor.';
 			}
 			break;
 		case 2:
 		case 3:
 			$ary_dates = array('month', 'day', 'year');
-			for ($i = 1; $i < 4; $i++)
-			{
-				foreach ($ary_dates as $xvar)
-				{
+			for ($i = 1; $i < 4; $i++) {
+				foreach ($ary_dates as $xvar) {
 					${$xvar . $i} = request_var($xvar . $i, 0);
 				}
 			}
 			
-			//
-			if (!$month1 || !$day1 || !$year1)
-			{
+			if (!$month1 || !$day1 || !$year1) {
 				$error[] = 'Debe ingresar la fecha inicial correctamente.';
 			}
 			
-			if (!$month2 || !$day2 || !$year2)
-			{
+			if (!$month2 || !$day2 || !$year2) {
 				$error[] = 'Debe ingresar la fecha final correctamente.';
 			}
 			
-			if (!$month3 || !$day3 || !$year3)
-			{
+			if (!$month3 || !$day3 || !$year3) {
 				$error[] = 'Debe ingresar la fecha del reporte correctamente.';
 			}
 			
-			if (!sizeof($error))
-			{
+			if (!sizeof($error)) {
 				$s_date = gmmktime(6, 0, 0, $month1, $day1, $year1);
 				$e_date = gmmktime(6, 0, 0, $month2, $day2, $year2);
 				$t_date = gmmktime(6, 0, 0, $month3, $day3, $year3);
 				
-				if ($s_date > $e_date)
-				{
+				if ($s_date > $e_date) {
 					$error[] = 'La fecha inicial no puede ser mayor a la fecha final';
 				}
 				
-				if ($t_date < $s_date)
-				{
+				if ($t_date < $s_date) {
 					$error[] = 'La fecha del reporte no puede ser menor a la fecha inicial.';
 				}
 			}
 			break;
 	}
 	
-	if (!sizeof($error))
-	{
+	if (!sizeof($error)) {
 		//
 		// Load PDF class
 		//
@@ -142,8 +124,7 @@ if ($submit)
 		include('../includes/convert.php');
 		include('../includes/pdf_aop.php');
 		
-		switch ($screen)
-		{
+		switch ($screen) {
 			case 1:
 				$search = str_replace(' ', '', trim($search));
 				
@@ -151,32 +132,25 @@ if ($submit)
 				$sql_in_match = array();
 				
 				$sc_e = explode(',', $search);
-				foreach ($sc_e as $sc_i)
-				{
-					if (strpos($sc_i, '-'))
-					{
+				foreach ($sc_e as $sc_i) {
+					if (strpos($sc_i, '-')) {
 						$hyp_e = explode('-', $sc_i);
 						
-						if ($hyp_e[0] > $hyp_e[1])
-						{
+						if ($hyp_e[0] > $hyp_e[1]) {
 							$error[] = 'Un rango de exenciones tiene error, el n&uacute;mero de inicio es mayor al n&uacute;mero final, <strong>' . $hyp_e[0] . ' - ' . $hyp_e[1] . '</strong>';
 							break;
 						}
 						
 						$sql_rnk_match[] = '((c_exe >= ' . (int) $hyp_e[0] . ') AND (c_exe <= ' . (int) $hyp_e[1] . '))';
-					}
-					else
-					{
+					} else {
 						$sc_i = intval($sc_i);
-						if ($sc_i)
-						{
+						if ($sc_i) {
 							$sql_in_match[] = $sc_i;
 						}
 					}
 				}
 				
-				if (!sizeof($error) && (sizeof($sql_rnk_match) || sizeof($sql_in_match)))
-				{
+				if (!sizeof($error) && (sizeof($sql_rnk_match) || sizeof($sql_in_match))) {
 					$sql_stm_rnk_match = implode(' OR ', $sql_rnk_match);
 					$sql_stm_in_match = implode(',', array_map('intval', $sql_in_match));
 					$sql_stm_in_match = ($sql_stm_in_match != '') ? ' ' . (($sql_stm_rnk_match != '') ? 'OR ' : '') . ' c_exe IN (' . $sql_stm_in_match . ')' : '';
@@ -185,32 +159,26 @@ if ($submit)
 						FROM _constancia
 						WHERE ' . $sql_stm_rnk_match . $sql_stm_in_match . '
 						ORDER BY c_exe';
-					$result = $db->sql_query($sql);
+					$result = sql_rowset($sql);
 					
 					$data = array();
-					while ($row = $db->sql_fetchrow($result))
-					{
+					foreach ($result as $row) {
 						$data['c'][$row['c_exe']] = $row;
 					}
-					$db->sql_freeresult($result);
 					
-					if (sizeof($data['c']) && is_array($exc))
-					{
+					if (sizeof($data['c']) && is_array($exc)) {
 						$sql_u = 'SELECT *
 							FROM _log
 							WHERE log_exe = %d
-								AND log_action = \'i\'
-								AND log_user_id IN (' . implode(',', $exc) . ')';
-						foreach ($data['c'] as $i => $row)
-						{
+								AND log_action = ?
+								AND log_user_id IN (??)';
+						$sql_u = sql_filter($sql_u, 'i', implode(',', $exc));
+						
+						foreach ($data['c'] as $i => $row) {
 							$sql = sprintf($sql_u, $i);
-							$result = $db->sql_query($sql);
-							
-							if (!$row = $db->sql_fetchrow($result))
-							{
+							if (!$row = sql_fieldrow($sql)) {
 								unset($data['c'][$i]);
 							}
-							$db->sql_freeresult($result);
 						}
 					}
 					
@@ -218,46 +186,37 @@ if ($submit)
 					{
 						$sql = 'SELECT *
 							FROM _factura
-							WHERE f_exe IN (' . implode(',', array_keys($data['c'])) . ')
+							WHERE f_exe IN (??)
 							ORDER BY f_exe';
-						$result = $db->sql_query($sql);
+						$result = sql_rowset(sql_filter($sql, implode(',', array_keys($data['c']))));
 						
-						while ($row = $db->sql_fetchrow($result))
-						{
+						foreach ($result as $row) {
 							$data['f'][] = $row;
 						}
-						$db->sql_freeresult($result);
 						
 						$p_index = array();
-						foreach ($data['c'] as $c_data)
-						{
+						foreach ($data['c'] as $c_data) {
 							$p_index[] = $c_data['c_nit'];
 						}
 						
 						$sql = "SELECT *
 							FROM _prov
-							WHERE p_nit IN ('" . implode("','", $p_index) . "')
+							WHERE p_nit IN ('??')
 							ORDER BY p_nit";
-						$result = $db->sql_query($sql);
-						
-						if ($row = $db->sql_fetchrow($result))
-						{
+						if ($result = sql_rowset(sql_filter($sql, implode("','", $p_index)))) {
 							$p_data = array();
-							do
-							{
+							
+							foreach ($result as $row) {
 								$p_data[$row['p_nit']] = $row['p_name'];
 							}
-							while ($row = $db->sql_fetchrow($result));
 						}
 						
-						$sql = 'UPDATE _constancia
-							SET c_np = 1
-							WHERE c_exe IN (' . implode(',', array_keys($data['c'])) . ')';
-						$db->sql_query($sql);
+						$sql = 'UPDATE _constancia SET c_np = 1
+							WHERE c_exe IN (??)';
+						sql_query(sql_filter($sql, implode(',', array_keys($data['c']))));
 						
 						$selected_fontafm = request_var('selected_fontafm', '');
-						if (empty($selected_fontafm))
-						{
+						if (empty($selected_fontafm)) {
 							$selected_fontafm = 'verdana';
 						}
 						
@@ -287,12 +246,9 @@ if ($submit)
 						$cv = new convert();
 						
 						$int_page = 0;
-						foreach ($data['c'] as $c_exe => $c_data)
-						{
-							for ($b = 0; $b < $tpcs; $b++)
-							{
-								if ($int_page)
-								{
+						foreach ($data['c'] as $c_exe => $c_data) {
+							for ($b = 0; $b < $tpcs; $b++) {
+								if ($int_page) {
 									$aop->pdf->ezNewPage();
 								}
 								
@@ -306,10 +262,8 @@ if ($submit)
 								$p_name = ($c_data['c_nit']) ? $p_data[$c_nit] : $c_data['c_text'];
 								$p_name = html_entity_decode($p_name);
 								
-								if ($c_nit != '')
-								{
-									if (!strpos($c_nit, '-'))
-									{
+								if ($c_nit != '') {
+									if (!strpos($c_nit, '-')) {
 										$c_nit = substr($c_nit, 0, strlen($c_nit) - 1) . '' . '-' . substr($c_nit, -1, 1);
 									}
 								}
@@ -324,8 +278,7 @@ if ($submit)
 								//
 								// Facturas
 								//
-								foreach ($fact_coords as $coord => $t_text)
-								{
+								foreach ($fact_coords as $coord => $t_text) {
 									$aop->pdf->addTextWrap($coord, 139, $d->getTextWidth(9, $t_text) + 10, 9, $t_text);
 								}
 								
@@ -333,19 +286,15 @@ if ($submit)
 								$nulled = array();
 								$cypm = 0;
 								
-								foreach ($data['f'] as $f_data)
-								{
-									if ($c_exe != $f_data['f_exe'])
-									{
+								foreach ($data['f'] as $f_data) {
+									if ($c_exe != $f_data['f_exe']) {
 										continue;
 									}
 									
 									parse_nulled_f($c_data['c_null'], $f_data);
 									
-									if ($c_data['c_null'])
-									{
-										if (isset($nulled[$c_data['c_exe']]))
-										{
+									if ($c_data['c_null']) {
+										if (isset($nulled[$c_data['c_exe']])) {
 											continue;
 										}
 										
@@ -371,20 +320,16 @@ if ($submit)
 									
 									$coord_sum += ($fi) ? 10 : 0;
 									
-									foreach ($print_f as $coord => $value)
-									{
+									foreach ($print_f as $coord => $value) {
 										// function addTextWrap($x, $y, $width, $size, $text, $justification = 'left', $angle = 0, $test = 0)
 										// function text($x, $y, $text, $size, $align = '')
 										// function right($width, $size, $text)
 										
 										// $aop->pdf->addTextWrap($coord, 125 - $coord_sum, $d->getTextWidth(8, $value), 8, $value);
 										
-										if ($coord == 80 || $coord == 230)
-										{
+										if ($coord == 80 || $coord == 230) {
 											$aop->pdf->addTextWrap($coord, 125 - $coord_sum, $d->getTextWidth(8, $value), 8, $value);
-										}
-										else
-										{
+										} else {
 											$aop->text($coord + $aop->right(40, 8, $value), $d->cy(125) - $coord_sum + (20 * $cypm), $value, 8);
 										}
 									}
@@ -425,9 +370,7 @@ if ($submit)
 						$d->ezOutput();
 						$d->stream();
 						die();
-					}
-					else
-					{
+					} else {
 						$error[] = 'No se encontr&oacute; ninguna exenci&oacute;n con la b&uacute;squeda especificada.';
 					}
 				}
@@ -437,68 +380,57 @@ if ($submit)
 				$sql_c_group = '';
 				if ($sgroup)
 				{
-					$sql = "SELECT *
+					$sql = 'SELECT *
 						FROM _log
-						WHERE log_user_id IN (" . implode(',', $groups[$sgroup]) . ")
-							AND log_action = 'i'
-						ORDER BY log_exe";
-					$result = $db->sql_query($sql);
+						WHERE log_user_id IN (??)
+							AND log_action = ?
+						ORDER BY log_exe';
+					$result = sql_rowset(sql_filter($sql, implode(',', $groups[$sgroup]), 'i'));
 					
-					while ($row = $db->sql_fetchrow($result))
-					{
+					foreach ($result as $row) {
 						$sql_c_group .= (($sql_c_group != '') ? ',' : '') . $row['log_exe'];
 					}
-					$db->sql_freeresult($result);
 					
-					if (empty($sql_c_group))
-					{
+					if (empty($sql_c_group)) {
 						$error[] = 'No se encontr&oacute; ninguna exenci&oacute;n con la b&uacute;squeda especificada';
 					}
 					
-					$sql_c_group = ' AND c.c_exe IN (' . $sql_c_group . ')';
+					$sql_c_group = sql_filter(' AND c.c_exe IN (??)', $sql_c_group);
 				}
 				
-				if (!sizeof($error))
-				{
+				if (!sizeof($error)) {
 					$sql = 'SELECT p.*, c.*, f.*
 						FROM _prov p, _constancia c, _factura f
 						WHERE p.p_nit = c.c_nit
 							AND c.c_exe = f.f_exe
-							AND c.c_date >= ' . (int) $s_date . '
-							AND c.c_date <= ' . (int) $e_date . 
+							AND c.c_date >= ?
+							AND c.c_date <= ?' .  
 							$sql_c_group . '
 						ORDER BY c.c_exe';
-					$result = $db->sql_query($sql);
+					$result = sql_rowset(sql_filter($sql, $s_data, $e_data));
 					
-					while ($row = $db->sql_fetchrow($result))
-					{
+					foreach ($result as $row) {
 						$data[] = $row;
 					}
-					$db->sql_freeresult($result);
 					
-					if (sizeof($data) && is_array($exc))
-					{
+					if (sizeof($data) && is_array($exc)) {
 						$sql_u = 'SELECT *
 							FROM _log
 							WHERE log_exe = %d
-								AND log_action = \'i\'
-								AND log_user_id IN (' . implode(',', $exc) . ')';
-						foreach ($data as $i => $row)
-						{
+								AND log_action = ?
+								AND log_user_id IN (??)';
+						$sql_u = sql_filter($sql_u, 'i', implode(',', $exc));
+						
+						foreach ($data as $i => $row) {
 							$sql = sprintf($sql_u, $row['c_exe']);
-							$result = $db->sql_query($sql);
-							
-							if (!$row = $db->sql_fetchrow($result))
-							{
+							if (!$row = sql_fieldrow($sql)) {
 								unset($data[$i]);
 							}
-							$db->sql_freeresult($result);
 						}
 					}
 				}
 				
-				if (sizeof($data))
-				{
+				if (sizeof($data)) {
 					$d =& new Cezpdf('LETTER');
 					$d->selectFont('../includes/pdf/verdana.afm');
 					
@@ -521,12 +453,9 @@ if ($submit)
 					//
 					// Process all data
 					//
-					foreach ($data as $i => $row)
-					{
-						if ($new_page)
-						{
-							if ($create_page)
-							{
+					foreach ($data as $i => $row) {
+						if ($new_page) {
+							if ($create_page) {
 								$aop->pdf->ezNewPage();
 							}
 							
@@ -548,23 +477,19 @@ if ($submit)
 						//
 						parse_nulled($row, true);
 						
-						if ($row['c_null'])
-						{
-							if (isset($nulled[$row['c_exe']]))
-							{
+						if ($row['c_null']) {
+							if (isset($nulled[$row['c_exe']])) {
 								continue;
 							}
 							
 							$nulled[$row['c_exe']] = true;
 						}
 						
-						if ($row['c_null'])
-						{
+						if ($row['c_null']) {
 							$row['p_name'] = $row['c_text'];
 						}
 						
-						if ($row['f_serie'] === '0')
-						{
+						if ($row['f_serie'] === '0') {
 							$row['f_serie'] = '';
 						}
 						
@@ -575,8 +500,7 @@ if ($submit)
 						$aop->text(97, $print_height, date('d/m/y', $row['c_date']), 6);
 						$aop->text(148 + $aop->right(50, 6, $row['p_nit']), $print_height, $row['p_nit'], 6);
 						
-						if ($row['f_serie'])
-						{
+						if ($row['f_serie']) {
 							$aop->text(345, $print_height, $row['f_serie'], 6);
 						}
 						
@@ -587,8 +511,7 @@ if ($submit)
 						
 						$print_height += $line_height * $print_height_add;
 						
-						if ($print_height > 770)
-						{
+						if ($print_height > 770) {
 							$new_page = true;
 							$create_page = true;
 						}
@@ -609,23 +532,10 @@ if ($submit)
 					FROM _prov p, _constancia c, _factura f
 					WHERE p.p_nit = c.c_nit
 						AND c.c_exe = f.f_exe
-						AND c.c_date >= ' . (int) $s_date . '
-						AND c.c_date <= ' . (int) $e_date . '
+						AND c.c_date >= ?
+						AND c.c_date <= ?
 					ORDER BY c.c_exe';
-				$result = $db->sql_query($sql);
-				
-				if ($row = $db->sql_fetchrow($result))
-				{
-					//
-					// Save array data
-					//
-					$data = array();
-					while ($row = $db->sql_fetchrow($result))
-					{
-						$data[] = $row;
-					}
-					$db->sql_freeresult($result);
-					
+				if ($data = sql_rowset(sql_filter($sql, $s_date, $e_date))) {
 					$d =& new Cezpdf('LETTER');
 					$d->selectFont('../includes/pdf/verdana.afm');
 					
@@ -648,29 +558,23 @@ if ($submit)
 					//
 					// Process all data
 					//
-					foreach ($data as $i => $row)
-					{
-						if ($row['c_null'])
-						{
-							if (isset($nulled[$row['c_exe']]))
-							{
+					foreach ($data as $i => $row) {
+						if ($row['c_null']) {
+							if (isset($nulled[$row['c_exe']])) {
 								continue;
 							}
 							
 							$nulled[$row['c_exe']] = true;
 						}
 						
-						if ($new_page)
-						{
-							if ($create_page)
-							{
+						if ($new_page) {
+							if ($create_page) {
 								$aop->pdf->ezNewPage();
 							}
 							
 							$print_height = 295;
 							
-							if ($total_fp)
-							{
+							if ($total_fp) {
 								$write_total_fp = '<b>VIENEN</b>';
 								$new_total_fp = '<b>' . number_format($total_fp, 2) . '</b>';
 								
@@ -692,16 +596,14 @@ if ($submit)
 						//
 						parse_nulled($row, true);
 						
-						if ($row['c_null'])
-						{
+						if ($row['c_null']) {
 							$row['p_name'] = $row['c_text'];
 						}
 						
 						$total_fp += $row['f_total'];
 						$row['f_total'] = number_format($row['f_total'], 2);
 						
-						if ($row['f_serie'] === '0')
-						{
+						if ($row['f_serie'] === '0') {
 							$row['f_serie'] = '';
 						}
 						
@@ -712,8 +614,7 @@ if ($submit)
 						$aop->text(97, $print_height, date('d/m/y', $row['c_date']), 6);
 						$aop->text(148 + $aop->right(50, 6, $row['p_nit']), $print_height, $row['p_nit'], 6);
 						
-						if ($row['f_serie'])
-						{
+						if ($row['f_serie']) {
 							$aop->text(345, $print_height, $row['f_serie'], 6);
 						}
 						
@@ -724,10 +625,8 @@ if ($submit)
 						
 						$print_height += $line_height * $print_height_add;
 						
-						if ($print_height > 625 || $i + 1 == $total_rows)
-						{
-							if ($i + 1 < $total_rows)
-							{
+						if ($print_height > 625 || $i + 1 == $total_rows) {
+							if ($i + 1 < $total_rows) {
 								$write_total_fp = 'VAN';
 								$aop->text(482 + $aop->right($aop->pdf->getTextWidth(6, $write_total_fp), 6, $write_total_fp), 636, $write_total_fp, 6);
 							}
@@ -735,8 +634,7 @@ if ($submit)
 							$new_total_fp = number_format($total_fp, 2);
 							$aop->text(507 + $aop->right(70, 7, $new_total_fp), 645, $new_total_fp, 7);
 							
-							if ($print_height > 625)
-							{
+							if ($print_height > 625) {
 								$new_page = true;
 								$create_page = true;
 							}
@@ -751,10 +649,6 @@ if ($submit)
 					$d->ezOutput();
 					$d->stream();
 					die();
-					
-					//
-					// End!
-					//
 				}
 				break;
 		}
@@ -766,8 +660,7 @@ print_layout($error);
 //
 // Functions
 //
-function print_layout($error = array())
-{
+function print_layout($error = array()) {
 	global $_submenu, $print_auth, $db, $user, $config, $screen;
 	
 	page_header();
@@ -777,10 +670,8 @@ function print_layout($error = array())
 	$folder = (!empty($screen)) ? $screen : $folder[0];
 	
 	$_buildmenu = array();
-	foreach ($_submenu as $k => $v)
-	{
-		if (!$print_auth[$k])
-		{
+	foreach ($_submenu as $k => $v) {
+		if (!$print_auth[$k]) {
 			continue;
 		}
 		
@@ -823,8 +714,7 @@ function print_layout($error = array())
 //
 // Functions
 //
-function s_print_1()
-{
+function s_print_1() {
 	global $user, $db, $config, $search;
 ?>
 	<tr>
@@ -841,8 +731,7 @@ function s_print_1()
 		
 		$dir = './../includes/pdf/';
 		$fp = @opendir($dir);
-		while ($file = readdir($fp))
-		{
+		while ($file = readdir($fp)) {
 			if (preg_match('#^([a-z0-9\-]+)\.afm$#is', $file, $ps))
 			{
 				print '<option value="' . $ps[1] . '">' . ucwords($ps[1]) . '</option>';
@@ -863,17 +752,14 @@ function s_print_1()
 <?php
 }
 
-function s_print_2()
-{
+function s_print_2() {
 	s_print_3(true);
 }
 
-function s_print_3($show_groups = false)
-{
+function s_print_3($show_groups = false) {
 	global $user, $db, $config;
 	
-	if ($show_groups)
-	{
+	if ($show_groups) {
 		global $groups, $groups_legend;
 	}
 ?>

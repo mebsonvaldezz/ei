@@ -32,18 +32,18 @@ if (empty($val))
 	}
 }
 
-$sql = 'SELECT *
-	FROM _prov
-	WHERE p_' . ((preg_match('#^([0-9]+)$#is', $val)) ? 'nit' : 'name') . " LIKE '" . $db->sql_escape($val) . "%'
-	ORDER BY p_name";
-$result = $db->sql_query($sql);
-
+$sql_field = (is_numeric($val)) ? 'nit' : 'name';
 $str = '';
-while ($row = $db->sql_fetchrow($result))
-{
+
+$sql = "SELECT *
+	FROM _prov
+	WHERE p_?? LIKE '??%'
+	ORDER BY p_name";
+$result = sql_rowset(sql_filter($sql, $sql_field, $val));
+
+foreach ($result as $row) {
 	$str .= '<li>' . $row['p_nit'] . '<br /><span class="informal">' . htmlentities($row['p_name']) . '</span></li>';
 }
-$db->sql_freeresult($result);
 
 echo '<ul>' . $str . '</ul>';
 

@@ -21,24 +21,19 @@ $_submenu = array(
 	'f' => 'Facturas'
 );
 
-if (!isset($_submenu[$screen]))
-{
+if (!isset($_submenu[$screen])) {
 	search_layout();
 }
 
 $default = '';
-switch ($screen)
-{
+switch ($screen) {
 	case 'p':
 		$default = '';
 		break;
 	case 'c':
-		if ($search_type == 'desc')
-		{
+		if ($search_type == 'desc') {
 			$default = '';
-		}
-		else
-		{
+		} else {
 			$default = 0;
 		}
 		break;
@@ -49,8 +44,7 @@ switch ($screen)
 
 $search = request_var('search', $default);
 
-if ($search_type == 'date')
-{
+if ($search_type == 'date') {
 	$month = request_var('month', 0);
 	$day = request_var('day', 0);
 	$year = request_var('year', 0);
@@ -62,48 +56,35 @@ if ($search_type == 'date')
 	$search2 = gmmktime(6, 0, 0, ($month2 + 1), $day2, $year2);
 }
 
-if ($submit && (empty($search) && (!$month || !$day || !$year)))
-{
+if ($submit && (empty($search) && (!$month || !$day || !$year))) {
 	$error[] = 'Debe ingresar un valor para la b&uacute;squeda.';
 }
 
-if ($submit && !sizeof($error))
-{
+if ($submit && !sizeof($error)) {
 	$p_data = $c_data = $f_data = array();
 	
-	switch ($screen)
-	{
+	switch ($screen) {
 		case 'p':
-			if ($search == '*')
-			{
+			if ($search == '*') {
 				/*
 				REMOVED FEATURE: Show all information stored with * char.
 				
 				$sql = 'SELECT *
 					FROM _prov
 					ORDER BY p_name';*/
-			}
-			else
-			{
-				$sql = 'SELECT *
+			} else {
+				$sql = "SELECT *
 					FROM _prov
-					WHERE ' . "p_nit LIKE '" . $db->sql_escape($search) . "%'" . '
-					ORDER BY p_name';
+					WHERE p_nit LIKE '??%'
+					ORDER BY p_name";
+				$sql = sql_filter($sql, $search);
 			}
-			
-			$result = $db->sql_query($sql);
-			
-			while ($row = $db->sql_fetchrow($result))
-			{
-				$p_data[] = $row;
-			}
-			$db->sql_freeresult($result);
+			$p_data = sql_rowset($sql);
 			
 			if (sizeof($p_data))
 			{
 				$nit_values = array();
-				foreach ($p_data as $item)
-				{
+				foreach ($p_data as $item) {
 					$nit_values[] = $item['p_nit'];
 				}
 				
@@ -111,19 +92,12 @@ if ($submit && !sizeof($error))
 					FROM _constancia
 					WHERE c_nit IN (\'' . implode('\',\'', $nit_values) . '\')
 					ORDER BY c_exe';
-				$result = $db->sql_query($sql);
-				
-				while ($row = $db->sql_fetchrow($result))
-				{
-					$c_data[] = $row;
-				}
-				$db->sql_freeresult($result);
+				$c_data = sql_rowset($sql);
 				
 				if (sizeof($c_data))
 				{
 					$exe_values = array();
-					foreach ($c_data as $item)
-					{
+					foreach ($c_data as $item) {
 						$exe_values[] = $item['c_exe'];
 					}
 					
@@ -131,13 +105,7 @@ if ($submit && !sizeof($error))
 						FROM _factura
 						WHERE f_exe IN (\'' . implode('\',\'', $exe_values) . '\')
 						ORDER BY f_exe';
-					$result = $db->sql_query($sql);
-					
-					while ($row = $db->sql_fetchrow($result))
-					{
-						$f_data[] = $row;
-					}
-					$db->sql_freeresult($result);
+					$f_data = sql_rowset($sql);
 				}
 			}
 			break;
@@ -146,19 +114,19 @@ if ($submit && !sizeof($error))
 			{
 				case 'date':
 					$search_field = 'c_date';
-					$sql_where = '>= ' . (int) $search . ' AND ' . $search_field . ' <= ' . (int) $search2;
+					$sql_where = sql_filter(' >= ? AND ?? <= ?', $search, $search_field, $search2);
 					break;
 				case 'nit':
 					$search_field = 'c_nit';
-					$sql_where = " = '" . $db->sql_escape($search) . "'";
+					$sql_where = sql_filter(' = ?', $search);
 					break;
 				case 'desc':
 					$search_field = 'c_text';
-					$sql_where = " LIKE '%" . $db->sql_escape($search) . "%'";
+					$sql_where = sql_filter(" LIKE '%??%'", $search);
 					break;
 				default:
 					$search_field = 'c_exe';
-					$sql_where = ' = ' . (int) $search;
+					$sql_where = sql_filter(' = ?', $search);
 					break;
 			}
 			
@@ -166,19 +134,11 @@ if ($submit && !sizeof($error))
 				FROM _constancia
 				WHERE ' . $search_field . $sql_where . '
 				ORDER BY c_exe';
-			$result = $db->sql_query($sql);
+			$c_data = sql_rowset($sql);
 			
-			while ($row = $db->sql_fetchrow($result))
-			{
-				$c_data[] = $row;
-			}
-			$db->sql_freeresult($result);
-			
-			if (sizeof($c_data))
-			{
+			if (sizeof($c_data)) {
 				$nit_values = array();
-				foreach ($c_data as $item)
-				{
+				foreach ($c_data as $item) {
 					$nit_values[] = $item['c_nit'];
 				}
 				
@@ -186,13 +146,7 @@ if ($submit && !sizeof($error))
 					FROM _prov
 					WHERE p_nit IN (\'' . implode('\',\'', $nit_values) . '\')
 					ORDER BY p_nit';
-				$result = $db->sql_query($sql);
-				
-				while ($row = $db->sql_fetchrow($result))
-				{
-					$p_data[] = $row;
-				}
-				$db->sql_freeresult($result);
+				$p_data = sql_rowset($sql);
 				
 				if (sizeof($p_data))
 				{
@@ -206,13 +160,7 @@ if ($submit && !sizeof($error))
 						FROM _factura
 						WHERE f_exe IN (\'' . implode('\',\'', $exe_values) . '\')
 						ORDER BY f_exe';
-					$result = $db->sql_query($sql);
-					
-					while ($row = $db->sql_fetchrow($result))
-					{
-						$f_data[] = $row;
-					}
-					$db->sql_freeresult($result);
+					$f_data = sql_rowset($sql);
 				}
 			}
 			break;
@@ -221,15 +169,15 @@ if ($submit && !sizeof($error))
 			{
 				case 'date':
 					$search_field = 'f_date';
-					$sql_where = '>= ' . (int) $search . ' AND ' . $search_field . ' <= ' . (int) $search2;
+					$sql_where = sql_filter('>= ? AND ?? <= ?', $search, $search_field, $search2);
 					break;
 				case 'fact':
 					$search_field = 'f_fact';
-					$sql_where = " = '" . $db->sql_escape($search) . "'";
+					$sql_where = sql_filter(' = ?', $search);
 					break;
 				default:
 					$search_field = 'f_exe';
-					$sql_where = ' = ' . (int) $search;
+					$sql_where = sql_filter(' = ?', $search);
 					break;
 			}
 			
@@ -237,19 +185,11 @@ if ($submit && !sizeof($error))
 				FROM _factura
 				WHERE ' . $search_field . $sql_where . '
 				ORDER BY f_exe';
-			$result = $db->sql_query($sql);
+			$f_data = sql_rowset($sql);
 			
-			while ($row = $db->sql_fetchrow($result))
-			{
-				$f_data[] = $row;
-			}
-			$db->sql_freeresult($result);
-			
-			if (sizeof($f_data))
-			{
+			if (sizeof($f_data)) {
 				$exe_values = array();
-				foreach ($f_data as $item)
-				{
+				foreach ($f_data as $item) {
 					$exe_values[] = $item['f_exe'];
 				}
 				
@@ -257,19 +197,11 @@ if ($submit && !sizeof($error))
 					FROM _constancia
 					WHERE c_exe IN (\'' . implode('\',\'', $exe_values) . '\')
 					ORDER BY c_exe';
-				$result = $db->sql_query($sql);
+				$c_data = sql_rowset($sql);
 				
-				while ($row = $db->sql_fetchrow($result))
-				{
-					$c_data[] = $row;
-				}
-				$db->sql_freeresult($result);
-				
-				if (sizeof($c_data))
-				{
+				if (sizeof($c_data)) {
 					$nit_values = array();
-					foreach ($c_data as $item)
-					{
+					foreach ($c_data as $item) {
 						$nit_values[] = $item['c_nit'];
 					}
 					
@@ -277,48 +209,34 @@ if ($submit && !sizeof($error))
 						FROM _prov
 						WHERE p_nit IN (\'' . implode('\',\'', $nit_values) . '\')
 						ORDER BY p_nit';
-					$result = $db->sql_query($sql);
-					
-					while ($row = $db->sql_fetchrow($result))
-					{
-						$p_data[] = $row;
-					}
-					$db->sql_freeresult($result);
+					$p_data = sql_rowset($sql);
 				}
 			}
 			break;
 	}
 	
-	if (!sizeof($p_data) && sizeof($c_data))
-	{
+	if (!sizeof($p_data) && sizeof($c_data)) {
 		$p_data = $c_data;
 		$c_data = array();
 	}
 	
 	$x_data = array();
-	foreach ($p_data as $i => $first)
-	{
-		if (!sizeof($c_data))
-		{
+	foreach ($p_data as $i => $first) {
+		if (!sizeof($c_data)) {
 			$x_data[] = $first;
 		}
 		
-		foreach ($c_data as $k => $second)
-		{
-			if ($first['p_nit'] != $second['c_nit'])
-			{
+		foreach ($c_data as $k => $second) {
+			if ($first['p_nit'] != $second['c_nit']) {
 				continue;
 			}
 	
-			if (!sizeof($f_data))
-			{
+			if (!sizeof($f_data)) {
 				$x_data[] = $first + $second;
 			}
 			
-			foreach ($f_data as $l => $third)
-			{
-				if ($third['f_exe'] != $second['c_exe'])
-				{
+			foreach ($f_data as $l => $third) {
+				if ($third['f_exe'] != $second['c_exe']) {
 					continue;
 				}
 				
@@ -327,30 +245,24 @@ if ($submit && !sizeof($error))
 		}
 	}
 	
-	if (sizeof($x_data))
-	{
+	if (sizeof($x_data)) {
 		$exc = $user->private_data();
-		if (exc === NULL)
-		{
+		if (exc === NULL) {
 			$error[] = 'Error en permisos de usuario.';
-		}
-		else if (is_array($exc))
-		{
+		} else if (is_array($exc)) {
 			$sql_u = 'SELECT *
 				FROM _log
 				WHERE log_exe = %d
-					AND log_action = \'i\'
-					AND log_user_id IN (' . implode(',', $exc) . ')';
+					AND log_action = ?
+					AND log_user_id IN (??)';
+			$sql_u = sql_filter($sql, 'i', implode(',', $exc));
+			
 			foreach ($x_data as $i => $row)
 			{
 				$sql = sprintf($sql_u, $row['c_exe']);
-				$result = $db->sql_query($sql);
-				
-				if (!$row = $db->sql_fetchrow($result))
-				{
+				if (!$row = sql_fieldrow($sql)) {
 					unset($x_data[$i]);
 				}
-				$db->sql_freeresult($result);
 			}
 		}
 	}
@@ -369,9 +281,7 @@ if ($submit && !sizeof($error))
 </div>
 <?php
 		page_footer();
-	}
-	else
-	{
+	} else {
 		$error[] = 'La b&uacute;squeda no produjo resultados.';
 	}
 }
@@ -381,8 +291,7 @@ search_layout($error);
 //
 // Functions
 //
-function search_layout($error = array())
-{
+function search_layout($error = array()) {
 	global $_submenu, $db, $config, $screen;
 	
 	page_header();
@@ -392,8 +301,7 @@ function search_layout($error = array())
 	$folder = (!empty($screen)) ? $screen : $folder[0];
 	
 	$_buildmenu = array();
-	foreach ($_submenu as $k => $v)
-	{
+	foreach ($_submenu as $k => $v) {
 		$_buildmenu[] = ($k == $folder) ? '<strong class="gray">' . $v . '</strong>' : '<a href="' . s_link('search', $k) . '">' . $v . '</a>';
 	}
 ?>

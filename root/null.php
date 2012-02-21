@@ -16,58 +16,40 @@ $confirm = (isset($_POST['confirm'])) ? true : false;
 
 $exe = request_var('exe', 0);
 
-if ($submit || $confirm)
-{
-	if (!$exe)
-	{
+if ($submit || $confirm) {
+	if (!$exe) {
 		$error[] = 'Debe ingresar un valor para la exenci&oacute;n.';
-	}
-	else
-	{
+	} else {
 		$sql = 'SELECT *
 			FROM _constancia
-			WHERE c_exe = ' . (int) $exe;
-		$result = $db->sql_query($sql);
-		
-		if (!$exe_data = $db->sql_fetchrow($result))
-		{
+			WHERE c_exe = ?';
+		if (!$exe_data = sql_fieldrow(sql_filter($sql, $exe))) {
 			$error[] = 'La exencion ingresada no existe, por favor verificar.';
 		}
-		$db->sql_freeresult($result);
 		
 		$exc = $user->private_data();
-		if (exc === NULL)
-		{
+		if (exc === NULL) {
 			$error[] = 'Error en permisos de usuario.';
-		}
-		else if (is_array($exc))
-		{
+		} else if (is_array($exc)) {
 			$sql = 'SELECT *
 				FROM _log
-				WHERE log_exe = ' . (int) $exe . '
-					AND log_action = \'i\'
-					AND log_user_id IN (' . implode(',', $exc) . ')';
-			$result = $db->sql_query($sql);
-			
-			if (!$row = $db->sql_fetchrow($result))
-			{
+				WHERE log_exe = ?
+					AND log_action = ?
+					AND log_user_id IN (??)';
+			if (!$row = sql_fieldrow(sql_filter($sql, $exe, 'i', implode(',', $exc)))) {
 				$error[] = 'No tiene permisos de anular esta exenci&oacute;n.';
 			}
-			$db->sql_freeresult($result);
 		}
 	}
 	
-	if (!sizeof($error) && $exe_data['c_null'])
-	{
+	if (!sizeof($error) && $exe_data['c_null']) {
 		$error[] = 'La exenci&oacute;n ya fue anulada.';
 	}
 	
-	if (!sizeof($error) && $confirm)
-	{
-		$sql = 'UPDATE _constancia
-			SET c_null = 1
-			WHERE c_exe = ' . (int) $exe;
-		$db->sql_query($sql);
+	if (!sizeof($error) && $confirm) {
+		$sql = 'UPDATE _constancia SET c_null = 1
+			WHERE c_exe = ';
+		sql_query(sql_filter($sql, $exe));
 		
 		xlog('n', $exe);
 		
@@ -85,25 +67,17 @@ if ($submit || $confirm)
 	}
 }
 
-if ($submit && !sizeof($error))
-{
+if ($submit && !sizeof($error)) {
 	//
 	page_header();
 	
 	$sql = 'SELECT p.*, c.*, f.*
 		FROM _prov p, _constancia c, _factura f
-		WHERE f.f_exe = ' . (int) $exe . '
+		WHERE f.f_exe = ?
 			AND f.f_exe = c.c_exe
 			AND p.p_nit = c.c_nit
 		ORDER BY f.f_fact';
-	$result = $db->sql_query($sql);
-	
-	$data = array();
-	while ($row = $db->sql_fetchrow($result))
-	{
-		$data[] = $row;
-	}
-	$db->sql_freeresult($result);
+	$data = sql_rowset(sql_filter($sql, $exe));
 	
 	echo '<div>&nbsp;</div>';
 	

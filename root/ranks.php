@@ -18,63 +18,49 @@ $submit = (isset($_POST['submit'])) ? TRUE : FALSE;
 $search = (isset($_POST['search'])) ? TRUE : FALSE;
 $screen = ($userid) ? 1 : 2;
 
-if ($userid)
-{
+if ($userid) {
 	$sql = 'SELECT *
 		FROM _users
-		WHERE user_id = ' . (int) $userid . '
+		WHERE user_id = ?
 			AND user_adm = 0';
-	$result = $db->sql_query($sql);
-	
-	if (!$userdata = $db->sql_fetchrow($result))
-	{
+	if (!$userdata = sql_fieldrow(sql_filter($sql, $userid))) {
 		$error[] = 'El usuario seleccionado no existe.';
 	}
-	$db->sql_freeresult($result);
 	
-	if (sizeof($error))
-	{
+	if (sizeof($error)) {
 		layout($screen, $error);
 	}
 	
 	//
 	// Save changes
 	//
-	if ($submit)
-	{
+	if ($submit) {
 		$user_rank_min = request_var('user_rank_min', 0);
 		$user_rank_max = request_var('user_rank_max', 0);
 		
 		// Check ranks
-		if ($user_rank_min > $user_rank_max)
-		{
+		if ($user_rank_min > $user_rank_max) {
 			$error[] = 'El rango m&iacute;nimo no puede ser mayor al rango m&aacute;ximo.';
 		}
 		
-		if (!sizeof($error))
-		{
+		if (!sizeof($error)) {
 			$update = array();
 			$changes = array('user_rank_min', 'user_rank_max');
-			foreach ($changes as $item)
-			{
-				if ($$item != $userdata[$item])
-				{
+			
+			foreach ($changes as $item) {
+				if ($$item != $userdata[$item]) {
 					$update[$item] = $$item;
 				}
 			}
 			
-			if (sizeof($update))
-			{
-				$sql = 'UPDATE _users 
-					SET ' . $db->sql_build_array('UPDATE', $update) . ' 
-					WHERE user_id = ' . (int) $userid;
-				$db->sql_query($sql);
+			if (sizeof($update)) {
+				$sql = 'UPDATE _users SET ?? 
+					WHERE user_id = ?';
+				sql_query(sql_filter($sql, sql_build('UPDATE', $update), $userid));
 			}
 			
 			redirect('ranks');
-		}
-		else
-		{
+		} else {
 			$bypass_vars = array(
 				'user_rank_min' => $user_rank_min,
 				'user_rank_max' => $user_rank_max
@@ -141,20 +127,13 @@ function layout($where = 1, $error = array(), $params = array())
 				WHERE user_id <> 1
 					AND user_adm = 0
 				ORDER BY username';
-			$result = $db->sql_query($sql);
-			
-			if ($row = $db->sql_fetchrow($result))
-			{
+			if ($result = sql_rowset($sql)) {
 				echo '<div class="tdisb pad10 red colorbox dsm ie-widthfix">';
 				
-				do
-				{
+				foreach ($result as $row) {
 					echo '<div class="pad4">&bull; <a href="' . s_link('ranks', $row['user_id']) . '">' . $row['username'] . '</a></div>';
 				}
-				while ($row = $db->sql_fetchrow($result));
 			}
-			$db->sql_freeresult($result);
-			
 			break;
 	}
 	

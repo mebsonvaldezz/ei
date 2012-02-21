@@ -15,13 +15,11 @@ $submit2 = (isset($_POST['submit2'])) ? true : false;
 $screen = request_var('screen', '');
 
 $_submenu = array('p' => 'Proveedores', 'c' => 'Constancias', 'f' => 'Facturas');
-if (!isset($_submenu[$screen]))
-{
+if (!isset($_submenu[$screen])) {
 	edit_layout();
 }
 
-if ($submit1 || $submit2)
-{
+if ($submit1 || $submit2) {
 	//
 	// Submit 1 && 2
 	//
@@ -42,62 +40,47 @@ if ($submit1 || $submit2)
 				break;
 		}
 		
-		$sql = 'SELECT *
-			FROM ' . $table[0] . '
-			WHERE ' . $table[1] . " = '" . $db->sql_escape($search) . "'";
+		$sql = "SELECT *
+			FROM ??
+			WHERE ?? = '??'";
+		$sql = sql_filter($sql, $table[0], $table[1], $search);
 		
-		switch ($screen)
-		{
+		switch ($screen) {
 			case 'f':
 				$search2 = request_var('search2', '');
 				$search3 = request_var('search3', '');
-				$sql .= ' AND f_exe = ' . (int) $search2 . " AND f_serie = '" . $db->sql_escape($search3) . "'";
+				$sql .= sql_filter(' AND f_exe = ? AND f_serie = ?', $search2, $search3);
 				break;
 		}
-		$result = $db->sql_query($sql);
 		
-		if (!$table_data = $db->sql_fetchrow($result))
-		{
+		if (!$table_data = sql_fieldrow($sql)) {
 			$error[] = 'La b&uacute;squeda no produjo resultados.';
 		}
-		$db->sql_freeresult($result);
 		
 		//
-		if (!sizeof($error))
-		{
+		if (!sizeof($error)) {
 			$exc = $user->private_data();
-			if (exc === NULL)
-			{
+			if (exc === NULL) {
 				$error[] = 'Error en permisos de usuario.';
-			}
-			else if (is_array($exc))
-			{
+			} else if (is_array($exc)) {
 				$temp_exe = ($screen == 'c') ? $search : $search2;
 				
 				$sql = 'SELECT *
 					FROM _log
-					WHERE log_exe = ' . (int) $temp_exe . '
-						AND log_action = \'i\'
-						AND log_user_id IN (' . implode(',', $exc) . ')';
-				$result = $db->sql_query($sql);
-				
-				if (!$row = $db->sql_fetchrow($result))
-				{
+					WHERE log_exe = ?
+						AND log_action = ?
+						AND log_user_id IN (??)';
+				if (!$row = sql_fieldrow(sql_filter($sql, $temp_exe, 'i', implode(',', $exc)))) {
 					$error[] = 'No tiene permisos de editar esta exenci&oacute;n.';
 				}
-				$db->sql_freeresult($result);
 			}
 		}
-	}
-	else
-	{
+	} else {
 		$error[] = 'Debe ingresar un valor para la b&uacute;squeda.';
 	}
 	
-	if (!sizeof($error))
-	{
-		switch ($screen)
-		{
+	if (!sizeof($error)) {
+		switch ($screen) {
 			case 'p':
 				break;
 			case 'c':
@@ -107,29 +90,23 @@ if ($submit1 || $submit2)
 				list($day, $month, $year) = explode('.', date('d.m.Y', $table_data['f_date']));
 				break;
 		}
-	}
-	else
-	{
+	} else {
 		edit_layout($error);
 	}
 	
 	//
 	// Submit 2
-	if ($submit2)
-	{
-		switch ($screen)
-		{
+	if ($submit2) {
+		switch ($screen) {
 			case 'p':
 				$nit = request_var('nit', '');
 				$name = request_var('name', '');
 				
-				if (empty($nit))
-				{
+				if (empty($nit)) {
 					$error[] = 'Debe completar el NIT.';
 				}
 				
-				if (empty($name))
-				{
+				if (empty($name)) {
 					$error[] = 'Debe completar el Proveedor.';
 				}
 				break;
@@ -142,36 +119,26 @@ if ($submit1 || $submit2)
 				$month = request_var('month', 0);
 				$year = request_var('year', 0);
 				
-				if (!$exencion)
-				{
+				if (!$exencion) {
 					$error[] = 'Debe completar la exenci&oacute;n.';
 				}
 				
-				if (empty($nit))
-				{
+				if (empty($nit)) {
 					$error[] = 'Debe completar el NIT.';
-				}
-				else
-				{
-					$sql = "SELECT *
+				} else {
+					$sql = 'SELECT *
 						FROM _prov
-						WHERE p_nit = '" . $db->sql_escape($nit) . "'";
-					$result = $db->sql_query($sql);
-					
-					if (!$row = $db->sql_fetchrow($result))
-					{
+						WHERE p_nit = ?';
+					if (!$row = sql_fieldrow(sql_filter($sql, $nit))) {
 						$error[] = 'El NIT ingresado no existe, por favor verificar en la pantalla de Proveedores.';
 					}
-					$db->sql_freeresult($result);
 				}
 				
-				if (empty($desc))
-				{
+				if (empty($desc)) {
 					$error[] = 'Debe completar la descripci&oacute;n.';
 				}
 				
-				if (!$day || !$month || !$year)
-				{
+				if (!$day || !$month || !$year) {
 					$error[] = 'Debe completar correctamente la fecha.';
 				}
 				break;
@@ -185,44 +152,37 @@ if ($submit1 || $submit2)
 				$month = request_var('month', 0);
 				$year = request_var('year', 0);
 				
-				if (!$exencion)
-				{
+				if (!$exencion) {
 					$error[] = 'Debe completar la exenci&oacute;n.';
 				}
 				
-				if (empty($factura))
-				{
+				if (empty($factura)) {
 					$error[] = 'Debe completar la Factura.';
 				}
 				
-				if (!$total)
-				{
+				if (!$total) {
 					$error[] = 'Debe ingresar el total.';
 				}
 				break;
 		}
 		
-		if ($screen != 'p')
-		{
+		if ($screen != 'p') {
 			check_date($error, $month, $day, $year);
 		}
 		
-		if (!sizeof($error))
-		{
-			if ($screen != 'p')
-			{
+		if (!sizeof($error)) {
+			if ($screen != 'p') {
 				$new_date = createdate($month, $day, $year);
 			}
 			
-			switch ($screen)
-			{
+			switch ($screen) {
 				case 'p':
 					$update_data = array(
 						'p_nit' => $nit,
 						'p_name' => $name
 					);
 					$table = '_prov';
-					$sql_where = "p_nit = '" . $db->sql_escape($search) . "'";
+					$sql_where = sql_filer('p_nit = ?', $search);
 					
 					xlog('pe.' . $search, 0, 0);
 					break;
@@ -234,7 +194,7 @@ if ($submit1 || $submit2)
 						'c_text' => $desc
 					);
 					$table = '_constancia';
-					$sql_where = "c_exe = '" . $db->sql_escape($search) . "'";
+					$sql_where = sql_filter('c_exe = ?', $search);
 					
 					xlog('e', $search);
 					break;
@@ -247,16 +207,15 @@ if ($submit1 || $submit2)
 						'f_fact' => $factura
 					);
 					$table = '_factura';
-					$sql_where = "f_exe = '" . $db->sql_escape($search2) . "' AND f_fact = '" . $db->sql_escape($search) . "'";
+					$sql_where = sql_filter('f_exe = ? AND f_fact = ?', $search2, $search);
 					
 					xlog('e', $search2, $search);
 					break;
 			}
 			
-			$sql = 'UPDATE ' . $table . '
-				SET ' . $db->sql_build_array('UPDATE', $update_data) . '
+			$sql = 'UPDATE ' . $table . ' SET ' . sql_build('UPDATE', $update_data) . '
 				WHERE ' . $sql_where;
-			$db->sql_query($sql);
+			sql_query($sql);
 			
 			//
 			// End update
@@ -406,8 +365,7 @@ function submenu()
 <?php
 }
 
-function edit_layout($error = false)
-{
+function edit_layout($error = false) {
 	global $_submenu, $db, $config, $screen;
 	
 	page_header();
@@ -454,8 +412,7 @@ if ($error !== false && sizeof($error))
 	page_footer();
 }
 
-function e_print_p()
-{
+function e_print_p() {
 ?>
 	<tr>
 		<td width="75" nowrap>NIT</td>
@@ -464,8 +421,7 @@ function e_print_p()
 <?php
 }
 
-function e_print_c()
-{
+function e_print_c() {
 ?>
 	<tr>
 		<td width="75" nowrap>Exenci&oacute;n</td>
@@ -474,8 +430,7 @@ function e_print_c()
 <?php
 }
 
-function e_print_f()
-{
+function e_print_f() {
 ?>
 	<tr>
 		<td width="75" nowrap>Exenci&oacute;n</td>

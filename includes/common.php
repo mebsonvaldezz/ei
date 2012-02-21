@@ -23,18 +23,18 @@ require_once(SROOT . 'includes/user.php');
 require_once(SROOT . 'includes/functions.php');
 require_once(SROOT . 'includes/db.mysql.php');
 
+if (!defined('REQC')) {
+	define('REQC', (strtolower(ini_get('request_order')) == 'gp'));
+}
+
 define('STRIP', (get_magic_quotes_gpc()) ? true : false);
 set_error_handler('error_handler');
 
 $user = new user();
 $db = new database();
 
-//$db->sql_connect('localhost', 'root', '', 'ei');
-
 $sql = 'SELECT *
 	FROM _config';
-$result = sql_rowset($sql, 'config_name', 'config_value');
-
-$config['saddress'] = 'http://localhost';
+$config = sql_rowset($sql, 'config_name', 'config_value');
 
 ?>

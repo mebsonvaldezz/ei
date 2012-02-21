@@ -19,47 +19,37 @@ $search = (isset($_POST['search'])) ? TRUE : FALSE;
 $create = (isset($_POST['create'])) ? TRUE : FALSE;
 $screen = ($userid) ? 1 : 2;
 
-if ($create)
-{
+if ($create) {
 	$u_username = request_var('u_username', '');
 	$u_password = request_var('u_password', '');
 	$u_email = request_var('u_email', '');
 	
 	$v_auth = array('auth_access' => 0, 'auth_insert' => 0, 'auth_edit' => 0, 'auth_null' => 0, 'auth_delete' => 0, 'auth_search' => 0, 'auth_ranks' => 0, 'auth_print' => 0, 'auth_log' => 0);
-	foreach ($v_auth as $k => $v)
-	{
+	foreach ($v_auth as $k => $v) {
 		$v_auth[$k] = request_var($k, $v);
 	}
 	
-	if (!empty($u_username))
-	{
-		if (!preg_match('#([a-zA-Z0-9]+)#si', $u_username))
-		{
+	if (!empty($u_username)) {
+		if (!preg_match('#([a-zA-Z0-9]+)#si', $u_username)) {
 			$error[] = 'El nombre de usuario, &uacute;nicamente puede contener letras y n&uacute;meros.';
 		}
-	}
-	else
-	{
+	} else {
 		$error[] = 'Debe completar el nombre de usuario.';
 	}
 	
-	if (sizeof($error))
-	{
+	if (sizeof($error)) {
 		layout($screen, $error);
 	}
 	
-	if (empty($u_password))
-	{
+	if (empty($u_password)) {
 		$error[] = 'Debe completar la clave de usuario.';
 	}
 	
-	if (empty($u_email))
-	{
+	if (empty($u_email)) {
 		$error[] = 'Debe completar el correo electr&oacute;nico.';
 	}
 	
-	if (!empty($u_password))
-	{
+	if (!empty($u_password)) {
 		$u_key = sha1($u_password);
 	}
 	
@@ -68,13 +58,11 @@ if ($create)
 		'user_password' => $u_key,
 		'user_email' => $u_email
 	);
-	$sql = 'INSERT INTO _users' . $db->sql_build_array('INSERT', $insert);
-	$db->sql_query($sql);
+	$sql = 'INSERT INTO _users' . sql_build('INSERT', $insert);
+	$v_auth['user_id'] = sql_query_nextid($sql);
 	
-	$v_auth['user_id'] = $db->sql_nextid();
-	
-	$sql = 'INSERT INTO _auth' . $db->sql_build_array('INSERT', $v_auth);
-	$db->sql_query($sql);
+	$sql = 'INSERT INTO _auth' . sql_build('INSERT', $v_auth);
+	sql_query($sql);
 	
 	redirect('users');
 }
@@ -83,26 +71,20 @@ if ($userid)
 {
 	$sql = 'SELECT u.*, a.*
 		FROM _users u, _auth a
-		WHERE u.user_id = ' . (int) $userid . '
+		WHERE u.user_id = ?
 			AND u.user_id = a.user_id';
-	$result = $db->sql_query($sql);
-	
-	if (!$userdata = $db->sql_fetchrow($result))
-	{
+	if (!$userdata = sql_fieldrow(sql_filter($sql, $userid))) {
 		$error[] = 'El usuario seleccionado no existe.';
 	}
-	$db->sql_freeresult($result);
 	
-	if (sizeof($error))
-	{
+	if (sizeof($error)) {
 		layout($screen, $error);
 	}
 	
 	//
 	// Save changes
 	//
-	if ($submit)
-	{
+	if ($submit) {
 		$user_adm = request_var('user_adm', 0);
 		$username = request_var('username', '');
 		$user_password1 = request_var('user_password1', '');
@@ -131,100 +113,77 @@ if ($userid)
 		-----------*/
 		
 		// Check user_adm
-		if ($user_adm && !$user->data['user_adm'])
-		{
+		if ($user_adm && !$user->data['user_adm']) {
 			$error[] = 'S&oacute;lo un administrador puede promover a <b>Administrador</b>.';
 		}
 		
 		// Check username
-		if (!empty($username))
-		{
-			if (!preg_match('#([a-zA-Z0-9]+)#si', $username))
-			{
+		if (!empty($username)) {
+			if (!preg_match('#([a-zA-Z0-9]+)#si', $username)) {
 				$error[] = 'El nombre de usuario, &uacute;nicamente puede contener letras y n&uacute;meros.';
 			}
-		}
-		else
-		{
+		} else {
 			$error[] = 'Debe completar el nombre de usuario.';
 		}
 		
 		// Check passwords
-		if (!empty($user_password1) && !empty($user_password2))
-		{
-			if ($user_password1 != $user_password2)
-			{
+		if (!empty($user_password1) && !empty($user_password2)) {
+			if ($user_password1 != $user_password2) {
 				$error[] = 'Las contrase&ntilde;as ingresadas no coinciden, por favor verificar.';
 			}
-		}
-		else
-		{
+		} else {
 //			$error[] = 'Debe ingresar la contrase&ntilde;a y la confirmaci&oacute;n.';
 		}
 		
 		// Check email
-		if (empty($user_email))
-		{
+		if (empty($user_email)) {
 			$error[] = 'Debe completar el correo electr&oacute;nico.';
 		}
 		
 		// Check ranks
-		if ($user_rank_min > $user_rank_max)
-		{
+		if ($user_rank_min > $user_rank_max) {
 			$error[] = 'El rango m&iacute;nimo no puede ser mayor al rango m&aacute;ximo.';
 		}
 		
-		if (!sizeof($error))
-		{
+		if (!sizeof($error)) {
 			$update = array();
 			$changes = array('user_adm', 'username', 'user_email', 'user_rank_min', 'user_rank_max', 'user_print_copies');
-			foreach ($changes as $item)
-			{
-				if ($$item != $userdata[$item])
-				{
+			foreach ($changes as $item) {
+				if ($$item != $userdata[$item]) {
 					$update[$item] = $$item;
 				}
 			}
 			
 			$update_auth = array();
 			$changes = array('auth_access', 'auth_insert', 'auth_edit', 'auth_null', 'auth_delete', 'auth_search', 'auth_ranks', 'auth_print', 'auth_log');
-			foreach ($changes as $item)
-			{
-				if ($$item != $userdata[$item])
-				{
+			foreach ($changes as $item) {
+				if ($$item != $userdata[$item]) {
 					$update_auth[$item] = $$item;
 				}
 			}
 			
-			if (!empty($user_password1))
-			{
+			if (!empty($user_password1)) {
 				$upass = sha1($user_password1);
-				if ($upass != $userdata['user_password'])
-				{
+				if ($upass != $userdata['user_password']) {
 					$update['user_password'] = $upass;
 				}
 			}
 			
-			if (sizeof($update))
-			{
-				$sql = 'UPDATE _users 
-					SET ' . $db->sql_build_array('UPDATE', $update) . ' 
-					WHERE user_id = ' . (int) $userid;
-				$db->sql_query($sql);
+			if (sizeof($update)) {
+				$sql = 'UPDATE _users SET ?? 
+					WHERE user_id = ?';
+				sql_query(sql_filter($sql, sql_build('UPDATE', $update), $userid));
 			}
 			
 			if (sizeof($update_auth))
 			{
-				$sql = 'UPDATE _auth
-					SET ' . $db->sql_build_array('UPDATE', $update_auth) . '
-					WHERE user_id = ' . (int) $userid;
-				$db->sql_query($sql);
+				$sql = 'UPDATE _auth SET ??
+					WHERE user_id = ?';
+				sql_query(sql_filter($sql, sql_build('UPDATE', $update_auth), $userid));
 			}
 			
 			redirect('users');
-		}
-		else
-		{
+		} else {
 			$bypass_vars = array(
 				'user_adm' => $user_adm,
 				'username' => $username,
@@ -256,19 +215,16 @@ layout($screen);
 //
 // Functions
 //
-function layout($where = 1, $error = array(), $params = array())
-{
+function layout($where = 1, $error = array(), $params = array()) {
 	global $db, $user, $config, $userdata;
 	
 	page_header();
 	
 	echo '<div class="vsep-pre"><div class="vsep1">&nbsp;</div></div>';
 	
-	switch ($where)
-	{
+	switch ($where) {
 		case 1:
-			if (!sizeof($params))
-			{
+			if (!sizeof($params)) {
 				$params = $userdata;
 			}
 ?>
@@ -369,19 +325,13 @@ function layout($where = 1, $error = array(), $params = array())
 				FROM _users
 				WHERE user_id <> 1
 				ORDER BY username';
-			$result = $db->sql_query($sql);
-			
-			if ($row = $db->sql_fetchrow($result))
-			{
+			if ($result = sql_rowset($sql)) {
 				echo '<div class="tdisb pad10 red colorbox dsm ie-widthfix">';
 				
-				do
-				{
+				foreach ($result as $row) {
 					echo '<div class="pad4">&bull; <a href="' . s_link('users', $row['user_id']) . '">' . $row['username'] . '</a></div>';
 				}
-				while ($row = $db->sql_fetchrow($result));
 			}
-			$db->sql_freeresult($result);
 			
 			if ($user->data['user_adm'])
 			{

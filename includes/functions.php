@@ -381,6 +381,14 @@ function set_var(&$result, $var, $type, $multibyte = false)
 */
 function request_var($var_name, $default, $multibyte = false)
 {
+	if (REQC) {
+		global $config;
+		
+		if ((strpos($var_name, $config['cookie_name']) !== false) && isset($_COOKIE[$var_name])) {
+			$_REQUEST[$var_name] = $_COOKIE[$var_name];
+		}
+	}
+	
 	if (!isset($_REQUEST[$var_name]) || (is_array($_REQUEST[$var_name]) && !is_array($default)) || (is_array($default) && !is_array($_REQUEST[$var_name])))
 	{
 		return (is_array($default)) ? array() : $default;
@@ -433,15 +441,14 @@ function set_config($config_name, $config_value)
 {
 	global $db, $config;
 
-	$sql = "UPDATE _config
-		SET config_value = '" . $db->sql_escape($config_value) . "'
-		WHERE config_name = '" . $db->sql_escape($config_name) . "'";
-	$db->sql_query($sql);
+	$sql = 'UPDATE _config SET config_value = ?
+		WHERE config_name = ?';
+	sql_query(sql_filter($sql, $config_value, $config_name));
 
-	if (!$db->sql_affectedrows() && !isset($config[$config_name]))
+	if (!sql_affectedrows() && !isset($config[$config_name]))
 	{
-		$sql = 'INSERT INTO _config' . $db->sql_build_array('INSERT', array('config_name'	=> $config_name, 'config_value'	=> $config_value));
-		$db->sql_query($sql);
+		$sql = 'INSERT INTO _config' . sql_build('INSERT', array('config_name' => $config_name, 'config_value' => $config_value));
+		sql_query($sql);
 	}
 
 	$config[$config_name] = $config_value;
@@ -452,6 +459,29 @@ function unique_id($extra = 0)
 	list($usec, $sec) = explode(' ', microtime());
 	mt_srand((float) $extra + (float) $sec + ((float) $usec * 100000));
 	return uniqid(mt_rand(), true);
+}
+
+function hook($name, $args = array(), $arr = false) {
+	switch ($name) {
+		case 'isset':
+			eval('$a = ' . $name . '($args' . ((is_array($args)) ? '[0]' . $args[1] : '') . ');');
+			return $a;
+			break;
+		case 'in_array':
+			if (is_array($args[1])) {
+				if (hook('isset', array($args[1][0], $args[1][1]))) {
+					eval('$a = ' . $name . '($args[0], $args[1][0]' . $args[1][1] . ');');
+				}
+			} else {
+				eval('$a = ' . $name . '($args[0], $args[1]);');
+			}
+			
+			return (isset($a)) ? $a : false;
+			break;
+	}
+	
+	$f = 'call_user_func' . ((!$arr) ? '_array' : '');
+	return $f($name, $args);
 }
 
 function rp()
@@ -503,9 +533,8 @@ function redirect($page)
 {
 	global $config, $db;
 
-	if (isset($db))
-	{
-		$db->sql_close();
+	if (isset($db)) {
+		sql_close();
 	}
 	
 	if (is_array($page))
@@ -534,7 +563,7 @@ function print_header()
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<title>Universidad del Istmo</title>
+<title>Exenciones de IVA</title>
 <link rel="stylesheet" type="text/css" href="<?php echo rp(); ?>scripts/style.css">
 <script src="<?php echo rp(); ?>scripts/prototype.js" type="text/javascript"></script>
 <script src="<?php echo rp(); ?>scripts/scriptaculous.js" type="text/javascript"></script>
@@ -548,7 +577,7 @@ var call_ajx = "<?php echo s_link('ajax'); ?>";
 <body>
 <noscript><div align="center"><div align="center" class="pad10 red colorbox dsm box ie-widthfix"><strong>Para poder utilizar este sistema, usted debe tener habilitado -Javascript-. Por favor verifique la configuraci&oacute;n de su navegador.</strong></div></div></noscript>
 
-<div align="center"><img src="/exiva/scripts/exiva.gif" alt="" /></div>
+<div align="center"><img src="/ei/scripts/exiva.gif" alt="" /></div>
 <div id="main-container">
 <?php
 }
@@ -709,7 +738,7 @@ if (sizeof($_buildmenu))
 }
 else
 {
-	echo 'Usted no est&aacute; autorizado para realizar operaciones, contacte al <a class="red" href="mailto:gazurdia@unis.edu.gt">administrador</a>.';
+	echo 'Usted no est&aacute; autorizado para realizar operaciones, contacte al administrador del sistema.';
 }
 
 ?>
@@ -731,33 +760,29 @@ function online()
 	
 	$sql = 'SELECT u.*, s.*
 		FROM _users u, _sessions s
-		WHERE s.session_time >= ' . (time() - 3600) . '
+		WHERE s.session_time >= ??
 			AND s.session_user_id <> 1
 			AND u.user_id = s.session_user_id
 		ORDER BY u.username ASC, s.session_ip ASC';
-	$result = $db->sql_query($sql);
+	$result = sql_rowset(sql_filter($sql, time() - 3600));
 	
-	if ($row = $db->sql_fetchrow($result))
-	{
-		echo '<br /><br /><div class="bold">Usuarios conectados</div><br />';
-		
-		$last_userid = '';
-		do
-		{
-			if ($row['user_id'] != $last_userid)
-			{
-				$total_users++;
-				echo '<div>' . (($user->data['user_adm']) ? '<a href="' . s_link('users', $row['user_id']) . '">' : '') . $row['username'] . (($user->data['user_adm']) ? '</a>' : '') . '</div>';
-			}
+	foreach ($result as $i => $row) {
+		if (!$i) {
+			echo '<br /><br /><div class="bold">Usuarios conectados</div><br />';
 			
-			$last_userid = $row['user_id'];
+			$last_userid = '';
 		}
-		while ($row = $db->sql_fetchrow($result));
+		
+		if ($row['user_id'] != $last_userid)
+		{
+			$total_users++;
+			echo '<div>' . (($user->data['user_adm']) ? '<a href="' . s_link('users', $row['user_id']) . '">' : '') . $row['username'] . (($user->data['user_adm']) ? '</a>' : '') . '</div>';
+		}
+		
+		$last_userid = $row['user_id'];
 	}
-	$db->sql_freeresult($result);
 	
-	if (!$total_users)
-	{
+	if (!$total_users) {
 		echo '<div>No hay usuarios conectados.</div>';
 	}
 }
@@ -774,8 +799,8 @@ function xlog($a, $e, $f = -9)
 		'log_exe' => (int) $e,
 		'log_action' => $action
 	);
-	$sql = 'INSERT INTO _log' . $db->sql_build_array('INSERT', $insert);
-	$db->sql_query($sql);
+	$sql = 'INSERT INTO _log' . sql_build('INSERT', $insert);
+	sql_query($sql);
 }
 
 function fatal_error($code, $nu1, $nu2, $ary, $errno) {
@@ -796,7 +821,11 @@ function get_file($f) {
 }
 
 function decode_ht($path) {
-	$da_path = './' . $path;
+	$da_path = './../' . $path;
+	
+	if (!@file_exists($da_path)) {
+		die('no');
+	}
 	
 	if (!@file_exists($da_path) || !$a = @file($da_path)) exit;
 	
@@ -827,6 +856,33 @@ function _decode($msg) {
 	}
 	
 	return $msg;
+}
+
+//Takes a password and returns the salted hash
+//$password - the password to hash
+//returns - the hash of the password (128 hex characters)
+function HashPassword($password) {
+	$salt = bin2hex(mcrypt_create_iv(32, MCRYPT_DEV_URANDOM)); //get 256 random bits in hex
+	
+	$hash = hash('sha256', $salt . $password); //prepend the salt, then hash
+	//store the salt and hash in the same string, so only 1 DB column is needed
+	$final = $salt . $hash; 
+	return $final;
+}
+
+//Validates a password
+//returns true if hash is the correct hash for that password
+//$hash - the hash created by HashPassword (stored in your DB)
+//$password - the password to verify
+//returns - true if the password is valid, false otherwise.
+function ValidatePassword($password, $correctHash) {
+	$salt = substr($correctHash, 0, 64); //get the salt from the front of the hash
+	$validHash = substr($correctHash, 64, 64); //the SHA256
+
+	$testHash = hash('sha256', $salt . $password); //hash the password being tested
+	
+	//if the hashes are exactly the same, the password is valid
+	return $testHash === $validHash;
 }
 
 ?>

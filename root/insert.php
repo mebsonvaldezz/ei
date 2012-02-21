@@ -23,10 +23,8 @@ $_submenu = array(
 	'p' => 'Proveedores'
 );
 
-if ($submit)
-{
-	if (!isset($_submenu[$screen]))
-	{
+if ($submit) {
+	if (!isset($_submenu[$screen])) {
 		redirect('insert');
 	}
 	
@@ -47,69 +45,46 @@ if ($submit)
 		$nit = str_replace(array('-', '_', ' '), '', $nit);
 	}
 	
-	switch ($screen)
-	{
+	switch ($screen) {
 		case 'c':
-			if (!$exencion)
-			{
+			if (!$exencion) {
 				$error[] = 'Debe ingresar el n&uacute;mero de exenci&oacute;n.';
-			}
-			else
-			{
+			} else {
 				$sql = 'SELECT *
 					FROM _constancia
-					WHERE c_exe = ' . (int) $exencion;
-				$result = $db->sql_query($sql);
-				
-				if ($row = $db->sql_fetchrow($result))
-				{
+					WHERE c_exe = ?';
+				if ($row = sql_fieldrow(sql_filter($sql, $exencion))) {
 					$error[] = 'La exencion ingresada ya existe.';
 				}
-				$db->sql_freeresult($result);
 				
-				if (!sizeof($error))
-				{
-					if (!$user->data['user_adm'])
-					{
-						if ($exencion < $user->data['user_rank_min'] || $exencion > $user->data['user_rank_max'])
-						{
+				if (!sizeof($error)) {
+					if (!$user->data['user_adm']) {
+						if ($exencion < $user->data['user_rank_min'] || $exencion > $user->data['user_rank_max']) {
 							$error[] = 'No se permite ingresar la exenci&oacute;n, porque no est&aacute; en su rango permitido.';
 						}
 					}
 				}
 			}
 			
-			if (empty($descripcion))
-			{
+			if (empty($descripcion)) {
 				$error[] = 'Debe ingresar la descripci&oacute;n.';
 			}
 			
-			if (empty($nit))
-			{
+			if (empty($nit)) {
 				$error[] = 'Debe ingresar el NIT.';
-			}
-			else
-			{
-				$sql = "SELECT *
+			} else {
+				$sql = 'SELECT *
 					FROM _prov
-					WHERE p_nit = '" . $db->sql_escape($nit) . "'";
-				$result = $db->sql_query($sql);
-				
-				if (!$row = $db->sql_fetchrow($result))
-				{
-					if (empty($proveedor))
-					{
+					WHERE p_nit = ?';
+				if (!$row = sql_fieldrow(sql_filter($sql, $nit))) {
+					if (empty($proveedor)) {
 						$error[] = 'Debe ingresar el nombre del proveedor.';
 					}
-				}
-				else
-				{
-					if (!sizeof($error))
-					{
+				} else {
+					if (!sizeof($error)) {
 						$proveedor = '';
 					}
 				}
-				$db->sql_freeresult($result);
 			}
 			
 			check_date($error, $month, $day, $year);
@@ -119,8 +94,11 @@ if ($submit)
 				// Proveedor
 				if (!empty($proveedor))
 				{
-					$insert_prov = array('p_nit' => $nit, 'p_name' => strtoupper($proveedor));
-					$db->sql_query('INSERT INTO _prov' . $db->sql_build_array('INSERT', $insert_prov));
+					$insert_prov = array(
+						'p_nit' => $nit,
+						'p_name' => strtoupper($proveedor)
+					);
+					sql_query('INSERT INTO _prov' . sql_build('INSERT', $insert_prov));
 					
 					xlog('pi.' . $nit, 0, 0);
 				}
@@ -133,77 +111,58 @@ if ($submit)
 					'c_nit' => $nit,
 					'c_text' => $descripcion
 				);
-				$db->sql_query('INSERT INTO _constancia' . $db->sql_build_array('INSERT', $insert_data));
+				sql_query('INSERT INTO _constancia' . sql_build('INSERT', $insert_data));
 				
 				xlog('i', $exencion);
 			}
 			break;
 		case 'f':
-			if (!$exencion)
-			{
+			if (!$exencion) {
 				$error[] = 'Debe ingresar el n&uacute;mero de exenci&oacute;n.';
-			}
-			else
-			{
+			} else {
 				$sql = 'SELECT *
 					FROM _constancia
-					WHERE c_exe = ' . (int) $exencion;
-				$result = $db->sql_query($sql);
-				
-				if (!$row = $db->sql_fetchrow($result))
-				{
+					WHERE c_exe = ?';
+				if (!$row = sql_fieldrow(sql_filter($sql, $exencion))) {
 					$error[] = 'La exenci&oacute;n ingresada no existe, por favor verificar.';
 				}
-				$db->sql_freeresult($result);
 			}
 			
-			if (empty($factura))
-			{
+			if (empty($factura)) {
 				$error[] = 'Debe ingresar el n&uacute;mero de factura.';
-			}
-			else
-			{
-				$sql = "SELECT p.p_nit, c.*, f.*
+			} else {
+				$sql = 'SELECT p.p_nit, c.*, f.*
 					FROM _prov p, _constancia c, _factura f
 					WHERE p.p_nit = c.c_nit
 						AND c.c_exe = f.f_exe
 						AND c.c_null = 0
-						AND f.f_fact = '" . $db->sql_escape($factura) . "'
-						AND f.f_serie = '" . $db->sql_escape($serie) . "'
-						AND c.c_nit = '" . $row['c_nit'] . "'";
-				$result = $db->sql_query($sql);
-				
-				if ($rowq = $db->sql_fetchrow($result))
-				{
+						AND f.f_fact = ?
+						AND f.f_serie = ?
+						AND c.c_nit = ?';
+				if ($rowq = sql_fieldrow(sql_filter($sql, $factura, $serie, $row['c_nit']))) {
 					$error[] = 'No se puede guardar, existe una factura de este proveedor, no se puede duplicar el n&uacute;mero de factura.';
 				}
-				$db->sql_freeresult($result);
 			}
 			
 			check_date($error, $month, $day, $year);
 			
 			if (!$total)
 			{
+				$cpsf = true;
+				
 				$sql = 'SELECT p.*
 					FROM _prov p, _constancia c
-					WHERE c.c_exe = ' . (int) $exencion;
-				$result = $db->sql_query($sql);
-				
-				$cpsf = true;
-				if ($row = $db->sql_fetchrow($result))
-				{
+					WHERE c.c_exe = ?';
+				if ($row = sql_fieldrow(sql_filter($sql, $exencion))) {
 					$cpsf = ($row['p_sf']) ? false : true;
 				}
-				$db->sql_freeresult($result);
 				
-				if ($cpsf)
-				{
+				if ($cpsf) {
 					$error[] = 'Debe ingresar el total.';
 				}
 			}
 			
-			if (!sizeof($error))
-			{
+			if (!sizeof($error)) {
 				$new_date = gmmktime(6, 0, 0, $month, $day, $year);
 				
 				$insert_data = array(
@@ -213,77 +172,65 @@ if ($submit)
 					'f_date' => $new_date,
 					'f_total' => $total
 				);
-				$sql = 'INSERT INTO _factura' . $db->sql_build_array('INSERT', $insert_data);
-				$db->sql_query($sql);
+				$sql = 'INSERT INTO _factura' . sql_build('INSERT', $insert_data);
+				sql_query($sql);
 				
 				xlog('i', $exencion, $factura);
 			}
 			break;
 		case 'p':
-			if (empty($nit))
-			{
+			if (empty($nit)) {
 				$error[] = 'Debe ingregar el n&uacute;mero de NIT.';
 			}
 			
-			if (empty($proveedor))
-			{
+			if (empty($proveedor)) {
 				$error[] = 'Debe ingresar el nombre del proveedor.';
 			}
 			
-			if (!sizeof($error))
-			{
-				$sql = "SELECT *
+			if (!sizeof($error)) {
+				$sql = 'SELECT *
 					FROM _prov
-					WHERE p_nit = '" . $db->sql_escape($nit) . "'
-						OR p_name = '" . $db->sql_escape(strtoupper($proveedor)) . "'";
-				$result = $db->sql_query($sql);
-				
-				if ($row = $db->sql_fetchrow($result))
-				{
+					WHERE p_nit = ? OR p_name = ?';
+				if ($row = sql_fieldrow(sql_filter($sql, $nit, strtoupper($proveedor)))) {
 					$error[] = 'El NIT o proveedor ya existe.';
 				}
-				$db->sql_freeresult($result);
 			}
 			
-			if (!sizeof($error))
-			{
+			if (!sizeof($error)) {
 				$psf = request_var('psf', 0);
 				
-				$insert_prov = array('p_nit' => $nit, 'p_name' => strtoupper($proveedor), 'p_sf' => $psf);
-				$db->sql_query('INSERT INTO _prov' . $db->sql_build_array('INSERT', $insert_prov));
+				$insert_prov = array(
+					'p_nit' => $nit,
+					'p_name' => strtoupper($proveedor),
+					'p_sf' => $psf
+				);
+				sql_query('INSERT INTO _prov' . sql_build('INSERT', $insert_prov));
 				
 				xlog('pi.' . $nit, 0, 0);
 			}
 			break;
 	}
 	
-	if (!sizeof($error))
-	{
-		if ($screen == 'p')
-		{
+	if (!sizeof($error)) {
+		if ($screen == 'p') {
 			redirect(array('insert', 'p'));
 		}
 		
-		if ($return_this != $user->data['user_return_insert'])
-		{
-			$sql = 'UPDATE _users
-				SET user_return_insert = ' . (int) $return_this . '
-				WHERE user_id = ' . (int) $user->data['user_id'];
-			$db->sql_query($sql);
+		if ($return_this != $user->data['user_return_insert']) {
+			$sql = 'UPDATE _users SET user_return_insert = ?
+				WHERE user_id = ?';
+			sql_query(sql_filter($sql, $return_this, $user->data['user_id']));
 		}
 		
-		if ($screen == 'c')
-		{
+		if ($screen == 'c') {
 			$return_this = 1;
 		}
 		
-		switch ($return_this)
-		{
+		switch ($return_this) {
 			case 1:
 				$redt = array('insert', 'f');
 				
-				if ($screen == 'c' || $cwe)
-				{
+				if ($screen == 'c' || $cwe) {
 					$redt[] = $exencion;
 				}
 				
@@ -306,8 +253,7 @@ $folder = array_splice($page_e, 1, 1);
 $folder = (!empty($screen)) ? $screen : $folder[0];
 
 $_buildmenu = array();
-foreach ($_submenu as $k => $v)
-{
+foreach ($_submenu as $k => $v) {
 	$_buildmenu[] = ($k == $folder) ? '<strong class="gray">' . $v . '</strong>' : '<a href="' . s_link('insert', $k) . '">' . $v . '</a>';
 }
 
@@ -378,7 +324,7 @@ function f_print_p()
 		<td><input type="text" name="nit" value="<?php echo $nit; ?>" size="30" /></td>
 	</tr>
 	<tr>
-		<td>Fecha</td>
+		<td>Nombre</td>
 		<td><input type="text" name="proveedor" value="<?php echo $proveedor; ?>" size="30" /></td>
 	</tr>
 	<tr>
@@ -388,44 +334,34 @@ function f_print_p()
 <?php
 }
 
-function f_print_c()
-{
+function f_print_c() {
 	global $db, $selected, $config;
 	
-	foreach (array('exencion', 'nit', 'proveedor', 'descripcion') as $var)
-	{
+	foreach (array('exencion', 'nit', 'proveedor', 'descripcion') as $var) {
 		global $$var;
-		if (!isset($$var))
-		{
+		if (!isset($$var)) {
 			$$var = '';
 		}
 	}
 	
-	if (empty($exencion))
-	{
+	if (empty($exencion)) {
 		global $user;
 		
 		$sql = 'SELECT MAX(c.c_exe) AS last
 			FROM _constancia c, _log l
 			WHERE l.log_exe = c.c_exe
-				AND l.log_user_id = ' . (int) $user->data['user_id'] . '
-				AND l.log_action = \'i\'
+				AND l.log_user_id = ?
+				AND l.log_action = ?
 			GROUP BY l.log_user_id';
-		$result = $db->sql_query($sql);
-		
-		if ($row = $db->sql_fetchrow($result))
-		{
+		if ($row = sql_fieldrow(sql_filter($sql, $user->data['user_id'], 'i'))) {
 			$exencion = $row['last'] + 1;
-			if ($user->data['user_rank_min'] && $user->data['user_rank_max'] && ($exencion < $user->data['user_rank_min'] || $exencion > $user->data['user_rank_max']))
-			{
+			if ($user->data['user_rank_min'] && $user->data['user_rank_max'] && ($exencion < $user->data['user_rank_min'] || $exencion > $user->data['user_rank_max'])) {
 				$exencion = '';
 			}
 		}
-		$db->sql_freeresult($result);
 	}
 	
-	if ($nit)
-	{
+	if ($nit) {
 		$selected = $nit;
 	}
 	
@@ -460,21 +396,18 @@ function f_print_c()
 <?php
 }
 
-function f_print_f()
-{
+function f_print_f() {
 	global $db, $config, $selected;
 	
-	foreach (array('exencion', 'serie', 'factura', 'total', 'exento') as $var)
-	{
+	foreach (array('exencion', 'serie', 'factura', 'total', 'exento') as $var) {
 		global $$var;
-		if (!isset($$var))
-		{
+		
+		if (!isset($$var)) {
 			$$var = '';
 		}
 	}
 	
-	if ($selected)
-	{
+	if ($selected) {
 		$exencion = $selected;
 	}
 	

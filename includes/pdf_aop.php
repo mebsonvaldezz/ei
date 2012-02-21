@@ -16,16 +16,15 @@ class aop
 		// Static format data
 		//
 		$this->hd = array(
-			'name' => 'UNIVERSIDAD DEL ISTMO',
-			'nit' => '12799777',
-			'avenue' => '7A. AVENIDA',
-			'number' => '3-67',
-			'zone' => 13,
+			'name' => 'EMPRESA',
+			'nit' => 'NIT',
+			'avenue' => 'AVENIDA O CALLE',
+			'number' => 'DIRECCION',
+			'zone' => 'ZONA',
 			'city' => 'GUATEMALA',
-			'phone' => '24291400',
-			'fax' => '24752192',
-			//'sig_name' => 'ING. MANUEL ANTONIO MARROQU&Iacute;N CONDE'
-			'sig_name' => 'LIC. JOSE RODRIGO DE LA PE&Ntilde;A AGUILAR'
+			'phone' => 'TELEFONO',
+			'fax' => 'FAX',
+			'sig_name' => 'REPRESENTANTE LEGAL'
 		);
 		
 		return true;

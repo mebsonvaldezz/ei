@@ -1,9 +1,6 @@
 <?php
 
-if (!defined('IN_EX'))
-{
-	die('Universidad del Istmo | 2006');
-}
+if (!defined('IN_EX')) exit;
 
 class sql_db
 {

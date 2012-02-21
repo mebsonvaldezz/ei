@@ -12,24 +12,19 @@ $user->allow_access('delete');
 $error = array();
 $fid = request_var('fid', 0);
 
-if ($fid)
-{
+if ($fid) {
 	$sql = 'SELECT *
 		FROM _factura
-		WHERE f_id = ' . (int) $fid;
-	$result = $db->sql_query($sql);
+		WHERE f_id = ?';
 	
-	if (!$f_data = $db->sql_fetchrow($result))
-	{
+	if (!$f_data = sql_fieldrow(sql_filter($sql, $fid))) {
 		$error[] = 'La factura no existe, por favor verificar.';
 	}
-	$db->sql_freeresult($result);
 	
-	if (!sizeof($error))
-	{
+	if (!sizeof($error)) {
 		$sql = 'DELETE FROM _factura
-			WHERE f_id = ' . (int) $fid;
-		$db->sql_query($sql);
+			WHERE f_id = ?';
+		sql_query(sql_filter($sql, $fid));
 		
 		xlog('f', $f_data['f_exe'], $f_data['f_fact']);
 		
